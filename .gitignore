@@ -1,0 +1,23 @@
+# Node / Next scaffold
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Java / Maven
+backend/target/
+*.class
+
+# Env / secrets
+.env
+.env.local
+*.pem
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Logs
+*.log

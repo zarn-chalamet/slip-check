@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:postgres}
+      POSTGRES_DB: slipcheck
+    ports:
+      - "5433:5432"
+    volumes:
+      - slipcheck-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:postgres} -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      # Inside compose, reach the db service by name
+      DB_URL: jdbc:postgresql://db:5432/slipcheck
+      TELEGRAM_MODE: ${TELEGRAM_MODE:-polling}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  slipcheck-pgdata:
