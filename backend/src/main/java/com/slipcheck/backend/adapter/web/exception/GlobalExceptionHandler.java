@@ -63,4 +63,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorBody("INTERNAL", "Something went wrong"));
     }
+
+    @ExceptionHandler(EmailTakenException.class)
+    public ResponseEntity<ErrorBody> emailTaken(EmailTakenException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorBody("EMAIL_TAKEN", e.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorBody> invalidCredentials(InvalidCredentialsException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorBody("INVALID_CREDENTIALS", e.getMessage()));
+    }
 }

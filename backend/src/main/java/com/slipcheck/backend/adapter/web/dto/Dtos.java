@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.slipcheck.backend.core.model.Channel;
+import com.slipcheck.backend.persistence.entity.SellerEntity;
 
 /**
  * All web API payload types (nested so request/response shapes stay in one reviewable file).
@@ -95,5 +96,8 @@ public final class Dtos {
 
     // ---- errors ----
     public record ErrorBody(String error, String message) {
+    }
+
+    public record AuthResult(String token, SellerEntity seller) {
     }
 }
