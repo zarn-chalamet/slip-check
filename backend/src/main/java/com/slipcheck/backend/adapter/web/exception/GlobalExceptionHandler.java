@@ -75,4 +75,34 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ErrorBody("INVALID_CREDENTIALS", e.getMessage()));
     }
+
+    @ExceptionHandler(SellerNotFoundException.class)
+    public ResponseEntity<ErrorBody> sellerNotFound(SellerNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorBody("SELLER_NOT_FOUND", e.getMessage()));
+    }
+
+    @ExceptionHandler(ChannelNotFoundException.class)
+    public ResponseEntity<ErrorBody> channelNotFound(ChannelNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorBody("CHANNEL_NOT_FOUND", e.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidTimeZoneException.class)
+    public ResponseEntity<ErrorBody> invalidTimeZone(InvalidTimeZoneException e) {
+        return ResponseEntity.badRequest()
+                .body(new ErrorBody("INVALID_TIME_ZONE", e.getMessage()));
+    }
+
+    @ExceptionHandler(UnsupportedChannelException.class)
+    public ResponseEntity<ErrorBody> unsupportedChannel(UnsupportedChannelException e) {
+        return ResponseEntity.badRequest()
+                .body(new ErrorBody("UNSUPPORTED_CHANNEL", e.getMessage()));
+    }
+
+    @ExceptionHandler(CannotUnlinkWebChannelException.class)
+    public ResponseEntity<ErrorBody> cannotUnlinkWeb(CannotUnlinkWebChannelException e) {
+        return ResponseEntity.badRequest()
+                .body(new ErrorBody("CANNOT_UNLINK_WEB", e.getMessage()));
+    }
 }
