@@ -117,4 +117,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorBody("ACCOUNT_NOT_FOUND", e.getMessage()));
     }
+
+    @ExceptionHandler(InvalidDateException.class)
+    public ResponseEntity<ErrorBody> invalidDate(InvalidDateException e) {
+        return ResponseEntity.badRequest()
+                .body(new ErrorBody("INVALID_DATE", e.getMessage()));
+    }
 }
