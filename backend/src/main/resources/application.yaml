@@ -1,3 +1,68 @@
 spring:
   application:
     name: backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/slipcheck}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: none          # Flyway owns the schema (see ADR-3)
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: ${PORT:8080}
+
+slipcheck:
+  jwt-secret: ${JWT_SECRET:change-me-long-random-at-least-32-bytes}
+  encryption-key-base64: ${ENCRYPTION_KEY_BASE64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+  image:
+    max-bytes: 4194304            # 4 MB
+  retry:
+    backoff-minutes: [1, 3, 10]
+    max-attempts: 3
+    followup-channels: [WEB, TELEGRAM]
+  receiver:
+    min-visible-digits: 3
+  retention:
+    provider-response-days: 30
+  summary:
+    default-time-zone: Asia/Bangkok
+    send-hour-local: 21
+  rate-limit:
+    upload-per-minute-per-seller: 30
+    login-per-minute-per-ip: 10
+  frontend-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+
+telegram:
+  bot-token: ${TELEGRAM_BOT_TOKEN:}
+  mode: ${TELEGRAM_MODE:polling}        # polling (dev) | webhook (prod)
+  webhook-secret: ${TELEGRAM_WEBHOOK_SECRET:}
+
+line:
+  channel-secret: ${LINE_CHANNEL_SECRET:}
+  channel-access-token: ${LINE_CHANNEL_ACCESS_TOKEN:}
+  push-enabled: ${LINE_PUSH_ENABLED:false}
+
+provider:
+  name: ${PROVIDER_NAME:mock}           # mock | <realProvider>
+  api-key: ${PROVIDER_API_KEY:}
+  base-url: ${PROVIDER_BASE_URL:}
+
+logging:
+  level:
+    root: info
+    com.slipcheck: info
