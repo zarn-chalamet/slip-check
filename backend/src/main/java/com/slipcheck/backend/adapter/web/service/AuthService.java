@@ -9,7 +9,6 @@ import com.slipcheck.backend.adapter.web.dto.Dtos.AuthResult;
 import com.slipcheck.backend.adapter.web.exception.EmailTakenException;
 import com.slipcheck.backend.adapter.web.exception.InvalidCredentialsException;
 import com.slipcheck.backend.audit.AuditService;
-import com.slipcheck.backend.audit.AuditService.ActorType;
 import com.slipcheck.backend.core.model.Channel;
 import com.slipcheck.backend.persistence.entity.ChannelIdentityEntity;
 import com.slipcheck.backend.persistence.entity.SellerEntity;

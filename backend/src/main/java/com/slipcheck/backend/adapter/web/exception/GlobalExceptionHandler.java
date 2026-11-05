@@ -123,4 +123,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest()
                 .body(new ErrorBody("INVALID_DATE", e.getMessage()));
     }
+
+    @ExceptionHandler(InvalidImageException.class)
+    public ResponseEntity<ErrorBody> invalidImage(InvalidImageException e) {
+        return ResponseEntity.badRequest().body(new ErrorBody("INVALID_IMAGE", e.getMessage()));
+    }
+
+    @ExceptionHandler(ImageTooLargeException.class)
+    public ResponseEntity<ErrorBody> imageTooLarge(ImageTooLargeException e) {
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
+                .body(new ErrorBody("IMAGE_TOO_LARGE", e.getMessage()));
+    }
 }
