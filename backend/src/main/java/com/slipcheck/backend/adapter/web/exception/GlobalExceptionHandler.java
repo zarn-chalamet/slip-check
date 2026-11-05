@@ -105,4 +105,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest()
                 .body(new ErrorBody("CANNOT_UNLINK_WEB", e.getMessage()));
     }
+
+    @ExceptionHandler(InvalidAccountNumberException.class)
+    public ResponseEntity<ErrorBody> invalidAccountNumber(InvalidAccountNumberException e) {
+        return ResponseEntity.badRequest()
+                .body(new ErrorBody("INVALID_ACCOUNT_NUMBER", e.getMessage()));
+    }
+
+    @ExceptionHandler(AccountNotFoundException.class)
+    public ResponseEntity<ErrorBody> accountNotFound(AccountNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorBody("ACCOUNT_NOT_FOUND", e.getMessage()));
+    }
 }
