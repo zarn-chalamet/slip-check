@@ -27,8 +27,8 @@ server:
   port: ${PORT:8080}
 
 slipcheck:
-  jwt-secret: ${JWT_SECRET:change-me-long-random-at-least-32-bytes}
-  encryption-key-base64: ${ENCRYPTION_KEY_BASE64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+  jwt-secret: ${JWT_SECRET}
+  encryption-key-base64: ${ENCRYPTION_KEY_BASE64}
   image:
     max-bytes: 4194304            # 4 MB
   retry:
@@ -58,9 +58,9 @@ line:
   push-enabled: ${LINE_PUSH_ENABLED:false}
 
 provider:
-  name: ${PROVIDER_NAME:mock}           # mock | <realProvider>
-  api-key: ${PROVIDER_API_KEY:}
-  base-url: ${PROVIDER_BASE_URL:}
+  name: ${PROVIDER_NAME:easyslip}        # change to 'mock' if you run out of API credits
+  api-key: ${PROVIDER_API_KEY}
+  base-url: ${PROVIDER_BASE_URL:https://api.easyslip.com/v2/verify/bank}
 
 logging:
   level:

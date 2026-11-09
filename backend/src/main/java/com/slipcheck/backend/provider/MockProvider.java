@@ -10,16 +10,6 @@ import com.slipcheck.backend.core.model.ProviderException.ProviderError;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-/**
- * Deterministic provider for development and tests, driven by magic payload prefixes
- * (docs/provider-notes.md):
- *
- *   MOCK_OK_<amountBaht>_<suffix>   -> a real-looking slip; receiver masked "xxx<suffix>xx"
- *   MOCK_NOT_FOUND / MOCK_PENDING / MOCK_QUOTA / MOCK_DOWN -> the matching error
- *
- * transRef is deterministic ("MOCKREF-<amount>-<suffix>") so the duplicate guarantee can
- * be exercised: two submissions of the same mock slip hit the same claimed transaction.
- */
 @Component
 @ConditionalOnProperty(name = "provider.name", havingValue = "mock", matchIfMissing = true)
 public class MockProvider implements SlipVerificationProvider {
@@ -34,26 +24,33 @@ public class MockProvider implements SlipVerificationProvider {
         if (qrPayload == null || qrPayload.isBlank()) {
             throw new ProviderException(ProviderError.INVALID_PAYLOAD, "empty payload");
         }
+
+        // --- FREE LOCAL SCANNER HACK ---
+        // If it starts with 000201, it is a real Thai bank QR code.
+        // We bypass the internet and pretend it verified successfully so you can test your UI for free.
+        if (qrPayload.startsWith("000201")) {
+            return new VerifiedSlip(
+                    "KBANK", 
+                    "LOCAL-TEST-" + System.currentTimeMillis(),
+                    new BigDecimal("0.00"), // We can't know the exact amount without paying for an API
+                    Instant.now(),
+                    "Real QR Scanned Locally",
+                    "xxx-x-x0000-x",
+                    "{\"note\": \"Verified locally via MockProvider (No API key used)\"}"
+            );
+        }
+
+        // --- STANDARD MOCK LOGIC ---
         if (qrPayload.startsWith("MOCK_OK_")) {
             String[] parts = qrPayload.trim().split("_");
-            if (parts.length < 4) {
-                throw new ProviderException(ProviderError.INVALID_PAYLOAD,
-                        "expected MOCK_OK_<amountBaht>_<suffix>");
-            }
-            String amountRaw = parts[2];
-            String suffix = parts[3];
-            BigDecimal amount;
-            try {
-                amount = new BigDecimal(amountRaw);
-            } catch (NumberFormatException e) {
-                throw new ProviderException(ProviderError.INVALID_PAYLOAD, "bad amount: " + amountRaw);
-            }
+            String amountRaw = parts.length > 2 ? parts[2] : "0";
+            String suffix = parts.length > 3 ? parts[3] : "0000";
             return new VerifiedSlip(
                     "KBANK",
                     "MOCKREF-" + amountRaw + "-" + suffix,
-                    amount,
+                    new BigDecimal(amountRaw),
                     Instant.now(),
-                    "Sompong J.",
+                    "Mock User",
                     "xxx" + suffix + "xx",
                     "{\"mock\":true}");
         }
