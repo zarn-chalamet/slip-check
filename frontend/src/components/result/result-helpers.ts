@@ -52,26 +52,30 @@ export const RESULT_ICONS: Record<string, LucideIcon> = {
 
 export const DEFAULT_RESULT_ICON: LucideIcon = AlertTriangle
 
-export const TONE_CLASSES: Record<Tone, { chip: string; tile: string; glow: string }> = {
+export const TONE_CLASSES: Record<Tone, { chip: string; tile: string; glow: string; text: string }> = {
   good: {
-    chip: 'bg-emerald-400/15 text-emerald-300 ring-emerald-400/30',
-    tile: 'bg-emerald-400/15 ring-emerald-400/30',
-    glow: 'shadow-glow',
+    chip: 'bg-emerald-400/10 text-emerald-300 ring-emerald-400/30',
+    tile: 'bg-emerald-400/10 text-emerald-400 ring-emerald-400/30',
+    glow: 'border-emerald-400/20 bg-emerald-400/5 shadow-[0_0_30px_rgba(52,211,153,0.05)]',
+    text: 'text-emerald-400',
   },
   warn: {
-    chip: 'bg-amber-400/15 text-amber-300 ring-amber-400/30',
-    tile: 'bg-amber-400/15 ring-amber-400/30',
-    glow: '',
+    chip: 'bg-amber-400/10 text-amber-300 ring-amber-400/30',
+    tile: 'bg-amber-400/10 text-amber-400 ring-amber-400/30',
+    glow: 'border-amber-400/20 bg-amber-400/5 shadow-[0_0_30px_rgba(251,191,36,0.05)]',
+    text: 'text-amber-400',
   },
   bad: {
-    chip: 'bg-rose-400/15 text-rose-300 ring-rose-400/30',
-    tile: 'bg-rose-400/15 ring-rose-400/30',
-    glow: '',
+    chip: 'bg-rose-400/10 text-rose-300 ring-rose-400/30',
+    tile: 'bg-rose-400/10 text-rose-400 ring-rose-400/30',
+    glow: 'border-rose-400/20 bg-rose-400/5 shadow-[0_0_30px_rgba(244,63,94,0.05)]',
+    text: 'text-rose-400',
   },
   info: {
-    chip: 'bg-sky-400/15 text-sky-300 ring-sky-400/30',
-    tile: 'bg-sky-400/15 ring-sky-400/30',
-    glow: '',
+    chip: 'bg-sky-400/10 text-sky-300 ring-sky-400/30',
+    tile: 'bg-sky-400/10 text-sky-400 ring-sky-400/30',
+    glow: 'border-sky-400/20 bg-sky-400/5 shadow-[0_0_30px_rgba(56,189,248,0.05)]',
+    text: 'text-sky-400',
   },
 }
 
