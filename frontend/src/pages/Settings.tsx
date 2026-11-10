@@ -1,15 +1,51 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Link2, MessageCircle, Send, Trash2, Unlink } from 'lucide-react'
-import {
-  errorMessage,
-  sellerApi
-} from '../api'
+import { AlertTriangle, Copy, Check, Globe, Trash2, Unlink } from 'lucide-react'
+import { errorMessage, sellerApi } from '../api'
 import { LANGUAGES, type LanguageCode } from '../i18n'
 import { useAuth } from '../hook/useAuth'
 import type { ChannelDto, LinkCode } from '../types/type'
 
 const TIME_ZONES = ['Asia/Bangkok', 'Asia/Yangon', 'UTC']
+
+// Inline SVGs for uncompromised dark-theme rendering
+function ChannelIcon({ channel, className = "h-5 w-5" }: { channel: string, className?: string }) {
+  if (channel === 'TELEGRAM') {
+    return (
+      <svg className={`shrink-0 ${className}`} viewBox="0 0 24 24" fill="none" role="img" aria-label="Telegram">
+        <circle cx="12" cy="12" r="12" fill="#24A1DE" />
+        <path d="M5.4 11.9L17.1 7.3C17.6 7.1 18.1 7.4 18 7.9L16 16.5C15.9 17 15.4 17.2 14.9 16.9L11.5 14.4L9.8 16C9.6 16.2 9.3 16.1 9.3 15.8V13.8L15.3 9.4C15.5 9.2 15.3 8.9 15.1 9C12.8 10.4 8.5 13.1 8.5 13.1L5.4 11.9Z" fill="white" />
+      </svg>
+    )
+  }
+  if (channel === 'LINE') {
+    return (
+      <svg className={`shrink-0 ${className}`} viewBox="0 0 24 24" fill="none" role="img" aria-label="LINE">
+        <circle cx="12" cy="12" r="12" fill="#06C755" />
+        <path d="M17.5 11C17.5 8.2 15 6 12 6C9 6 6.5 8.2 6.5 11C6.5 13.1 7.9 14.9 10 15.6C10.2 15.7 10.3 15.9 10.2 16.1L9.8 17.3C9.7 17.6 10 17.8 10.2 17.6L12.8 16.1C12.9 16 13 16 13.1 16C15.6 15.8 17.5 13.6 17.5 11Z" fill="white" />
+      </svg>
+    )
+  }
+  return (
+    <div className={`grid shrink-0 place-items-center rounded-full bg-emerald-400/10 text-emerald-400 ring-1 ring-emerald-400/30 ${className}`}>
+      <Globe className="h-3.5 w-3.5" aria-hidden />
+    </div>
+  )
+}
+
+function SettingsSection({ title, description, children }: { title: string, description: string, children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 gap-x-8 gap-y-6 pt-10 md:grid-cols-3">
+      <div className="md:col-span-1">
+        <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
+        <p className="mt-1 flex max-w-xs text-xs text-slate-400 leading-relaxed">{description}</p>
+      </div>
+      <div className="md:col-span-2">
+        {children}
+      </div>
+    </div>
+  )
+}
 
 export default function SettingsPage() {
   const { t } = useTranslation()
@@ -28,9 +64,13 @@ export default function SettingsPage() {
   const [linkCode, setLinkCode] = useState<LinkCode | null>(null)
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [channels, setChannels] = useState<ChannelDto[]>([])
+  const [copied, setCopied] = useState(false)
 
   // ---- danger zone ----
   const [confirmText, setConfirmText] = useState('')
+
+  const [unlinkTarget, setUnlinkTarget] = useState<ChannelDto | null>(null)
+  const [unlinking, setUnlinking] = useState(false)
 
   const loadChannels = useCallback(() => {
     sellerApi.channels().then(setChannels).catch(() => setChannels([]))
@@ -51,6 +91,17 @@ export default function SettingsPage() {
     return () => window.clearInterval(interval)
   }, [linkCode])
 
+  useEffect(() => {
+    let timeout: number
+    if (notice || error) {
+      timeout = window.setTimeout(() => {
+        setNotice(null)
+        setError(null)
+      }, 5000)
+    }
+    return () => window.clearTimeout(timeout)
+  }, [notice, error])
+
   async function saveProfile(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
@@ -69,6 +120,7 @@ export default function SettingsPage() {
 
   async function generateCode() {
     setError(null)
+    setCopied(false)
     try {
       const code = await sellerApi.linkCode(linkChannel)
       setLinkCode(code)
@@ -77,13 +129,25 @@ export default function SettingsPage() {
     }
   }
 
-  async function unlink(channel: ChannelDto) {
-    if (!window.confirm(t('settings.confirmUnlink'))) return
+  function handleCopy() {
+    if (!linkCode) return
+    navigator.clipboard.writeText(`/link ${linkCode.code}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function confirmUnlink() {
+    if (!unlinkTarget) return
+    setUnlinking(true)
     try {
-      await sellerApi.unlinkChannel(channel.id)
-      setChannels((prev) => prev.filter((c) => c.id !== channel.id))
+      await sellerApi.unlinkChannel(unlinkTarget.id)
+      setChannels((prev) => prev.filter((c) => c.id !== unlinkTarget.id))
+      setNotice('Channel unlinked successfully')
+      setUnlinkTarget(null)
     } catch (err) {
       setError(errorMessage(err, t('settings.failed')))
+    } finally {
+      setUnlinking(false)
     }
   }
 
@@ -101,174 +165,319 @@ export default function SettingsPage() {
   const seconds = String(secondsLeft % 60).padStart(2, '0')
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-slate-50">{t('settings.title')}</h1>
+    <div className="pb-12">
+      <div className="mb-8">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-50">{t('settings.title')}</h1>
+        <p className="mt-1 text-sm text-slate-400">Manage your account preferences and connected integrations.</p>
+      </div>
 
       {(error || notice) && (
-        <p
-          className={`rounded-xl px-4 py-2.5 text-sm ring-1 ${
+        <div
+          className={`mb-6 flex animate-in fade-in slide-in-from-top-2 items-center rounded-xl px-4 py-3 text-sm font-medium ring-1 ${
             error
               ? 'bg-rose-500/10 text-rose-300 ring-rose-400/30'
               : 'bg-emerald-500/10 text-emerald-300 ring-emerald-400/30'
           }`}
         >
           {error ?? notice}
-        </p>
+        </div>
       )}
 
-      {/* Profile */}
-      <form onSubmit={saveProfile} className="card space-y-4 p-5 sm:p-6">
-        <h2 className="text-sm font-bold text-slate-100">{t('settings.profile')}</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <label className="label" htmlFor="displayName">{t('settings.displayName')}</label>
-            <input
-              id="displayName"
-              className="input"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              maxLength={120}
-              required
-            />
-          </div>
-          <div>
-            <span className="label">{t('settings.language')}</span>
-            <div className="grid grid-cols-3 gap-1.5">
-              {LANGUAGES.map((lang) => (
-                <button
-                  key={lang.code}
-                  type="button"
-                  onClick={() => setLanguage(lang.code)}
-                  className={`rounded-xl px-2 py-2 text-xs font-medium ring-1 transition ${
-                    language === lang.code
-                      ? 'bg-emerald-400 text-ink-950 ring-emerald-400'
-                      : 'bg-ink-900/80 text-slate-300 ring-white/10 hover:bg-white/5'
-                  }`}
-                  aria-pressed={language === lang.code}
-                >
-                  {lang.label}
-                </button>
-              ))}
+      <div className="divide-y divide-white/5 space-y-10">
+        
+        {/* Profile Section */}
+        <SettingsSection title={t('settings.profile')} description="Update your display name, timezone, and preferred language for the dashboard.">
+          <form onSubmit={saveProfile} className="card overflow-hidden bg-ink-900/40 p-1">
+            <div className="space-y-5 p-5 sm:p-6">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300" htmlFor="displayName">
+                  {t('settings.displayName')}
+                </label>
+                <input
+                  id="displayName"
+                  className="w-full rounded-xl bg-ink-900 px-3.5 py-2.5 text-sm text-slate-200 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-400/50"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  maxLength={120}
+                  required
+                />
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <span className="mb-1.5 block text-xs font-semibold text-slate-300">{t('settings.language')}</span>
+                  <div className="flex rounded-xl bg-ink-900 p-1 ring-1 ring-white/10">
+                    {LANGUAGES.map((lang) => (
+                      <button
+                        key={lang.code}
+                        type="button"
+                        onClick={() => setLanguage(lang.code)}
+                        className={`flex-1 rounded-lg py-2 text-xs font-semibold transition ${
+                          language === lang.code
+                            ? 'bg-white/10 text-slate-100 shadow'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        aria-pressed={language === lang.code}
+                      >
+                        {lang.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-300" htmlFor="timeZone">
+                    {t('settings.timeZone')}
+                  </label>
+                  <input
+                    id="timeZone"
+                    className="w-full rounded-xl bg-ink-900 px-3.5 py-2.5 text-sm text-slate-200 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-emerald-400/50"
+                    list="timezones"
+                    value={timeZone}
+                    onChange={(e) => setTimeZone(e.target.value)}
+                  />
+                  <datalist id="timezones">
+                    {TIME_ZONES.map((zone) => (
+                      <option key={zone} value={zone} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
             </div>
+            <div className="flex justify-end border-t border-white/5 bg-ink-900/50 px-5 py-3 sm:px-6">
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-xl bg-emerald-400 px-4 py-2 text-xs font-bold text-ink-950 transition hover:bg-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:ring-offset-2 focus:ring-offset-ink-900 disabled:opacity-50"
+                disabled={busy}
+              >
+                {busy ? t('common.loading') : t('settings.save')}
+              </button>
+            </div>
+          </form>
+        </SettingsSection>
+
+        {/* Chat Linking Section */}
+        <SettingsSection title={t('settings.linkChat')} description={t('settings.linkChatSubtitle')}>
+          <div className="card overflow-hidden bg-ink-900/40 p-5 sm:p-6">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <button
+                type="button"
+                onClick={() => setLinkChannel('TELEGRAM')}
+                className={`flex flex-col items-center justify-center gap-3 rounded-2xl border px-4 py-6 transition ${
+                  linkChannel === 'TELEGRAM'
+                    ? 'border-emerald-400/50 bg-emerald-400/5 shadow-[0_0_15px_rgba(52,211,153,0.05)]'
+                    : 'border-white/5 bg-ink-900 hover:bg-white/[0.02]'
+                }`}
+              >
+                <ChannelIcon channel="TELEGRAM" className="h-8 w-8" />
+                <span className={`text-sm font-semibold ${linkChannel === 'TELEGRAM' ? 'text-emerald-300' : 'text-slate-300'}`}>Telegram</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setLinkChannel('LINE')}
+                className={`flex flex-col items-center justify-center gap-3 rounded-2xl border px-4 py-6 transition ${
+                  linkChannel === 'LINE'
+                    ? 'border-emerald-400/50 bg-emerald-400/5 shadow-[0_0_15px_rgba(52,211,153,0.05)]'
+                    : 'border-white/5 bg-ink-900 hover:bg-white/[0.02]'
+                }`}
+              >
+                <ChannelIcon channel="LINE" className="h-8 w-8" />
+                <span className={`text-sm font-semibold ${linkChannel === 'LINE' ? 'text-emerald-300' : 'text-slate-300'}`}>LINE Bot</span>
+              </button>
+            </div>
+
+            <div className="mt-5 text-center">
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-center rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 sm:w-auto"
+                onClick={generateCode}
+              >
+                {t('settings.generateCode')}
+              </button>
+            </div>
+
+            {linkCode && (
+              <div className="mt-6 overflow-hidden rounded-2xl border border-emerald-400/20 bg-emerald-400/5 animate-in fade-in zoom-in-95">
+                <div className="p-5 text-center sm:p-6">
+                  <p className="text-xs font-medium text-emerald-400/80">{t('settings.codeInstructions')}</p>
+
+                  {/* Single-line code + copy */}
+                  <div className="mx-auto mt-4 inline-flex max-w-full items-center gap-2 rounded-xl bg-ink-950 px-3 py-2 ring-1 ring-emerald-400/30">
+                    <code className="whitespace-nowrap font-mono text-sm font-bold tracking-wider text-emerald-300 sm:text-base">
+                      /link {linkCode.code}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={handleCopy}
+                      className="shrink-0 rounded-md p-1.5 text-emerald-400/60 transition hover:bg-emerald-400/10 hover:text-emerald-300 focus:outline-none"
+                      title="Copy code"
+                    >
+                      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      {secondsLeft > 0 && (
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                      )}
+                      <span
+                        className={`relative inline-flex h-2 w-2 rounded-full ${
+                          secondsLeft > 0 ? 'bg-emerald-400' : 'bg-slate-600'
+                        }`}
+                      />
+                    </span>
+                    <p className="text-xs font-medium text-slate-400">
+                      {t('settings.codeExpires')}{' '}
+                      {secondsLeft > 0 ? (
+                        <span className="tabular-nums text-slate-300">
+                          {minutes}:{seconds}
+                        </span>
+                      ) : (
+                        <span className="text-rose-400">Expired</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <div>
-            <label className="label" htmlFor="timeZone">{t('settings.timeZone')}</label>
-            <input
-              id="timeZone"
-              className="input"
-              list="timezones"
-              value={timeZone}
-              onChange={(e) => setTimeZone(e.target.value)}
-            />
-            <datalist id="timezones">
-              {TIME_ZONES.map((zone) => (
-                <option key={zone} value={zone} />
-              ))}
-            </datalist>
-          </div>
-        </div>
-        <button type="submit" className="btn-primary" disabled={busy}>
-          {busy ? t('common.loading') : t('settings.save')}
-        </button>
-      </form>
+        </SettingsSection>
 
-      {/* Chat linking */}
-      <section className="card p-5 sm:p-6">
-        <h2 className="text-sm font-bold text-slate-100">{t('settings.linkChat')}</h2>
-        <p className="mt-1 text-sm text-slate-400">{t('settings.linkChatSubtitle')}</p>
+        {/* Linked Channels Section */}
+        <SettingsSection title={t('settings.channels')} description="Review and manage external messaging apps actively authenticated with your account.">
+          <div className="card overflow-hidden bg-ink-900/40">
+            <div className="divide-y divide-white/5">
+              {channels.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-sm font-medium text-slate-500">{t('settings.noChannels')}</p>
+                </div>
+              ) : (
+                channels.map((channel) => (
+                  <div key={channel.id} className="flex items-center gap-4 p-4 transition-colors hover:bg-white/[0.02] sm:px-6">
+                    <ChannelIcon channel={channel.channel} className="h-10 w-10 sm:h-8 sm:w-8" />
+                    
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-200">
+                        {channel.channel === 'WEB' ? 'Web Dashboard' : channel.externalUserId}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Authenticated · {channel.language.toUpperCase()}
+                      </p>
+                    </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button
-            className={`btn-ghost ${linkChannel === 'TELEGRAM' ? 'ring-emerald-400/60 bg-emerald-400/10' : ''}`}
-            onClick={() => setLinkChannel('TELEGRAM')}
-          >
-            <Send className="h-4 w-4" aria-hidden />
-            Telegram
-          </button>
-          <button
-            className={`btn-ghost ${linkChannel === 'LINE' ? 'ring-emerald-400/60 bg-emerald-400/10' : ''}`}
-            onClick={() => setLinkChannel('LINE')}
-          >
-            <MessageCircle className="h-4 w-4" aria-hidden />
-            LINE
-          </button>
-          <button className="btn-primary" onClick={generateCode}>
-            <Link2 className="h-4 w-4" aria-hidden />
-            {t('settings.generateCode')}
-          </button>
-        </div>
-
-        {linkCode && (
-          <div className="mt-4 rounded-2xl bg-ink-900/80 p-5 text-center ring-1 ring-emerald-400/20">
-            <p className="text-xs text-slate-500">{t('settings.codeInstructions')}</p>
-            <p className="mt-2 font-mono text-2xl font-bold tracking-wider text-emerald-300">
-              /link {linkCode.code}
-            </p>
-            <p className="mt-2 text-xs text-slate-500">
-              {t('settings.codeExpires')} {secondsLeft > 0 && `· ${minutes}:${seconds}`}
-            </p>
-          </div>
-        )}
-      </section>
-
-      {/* Linked channels */}
-      <section className="card p-5 sm:p-6">
-        <h2 className="text-sm font-bold text-slate-100">{t('settings.channels')}</h2>
-        <div className="mt-3 space-y-2">
-          {channels.length === 0 && (
-            <p className="py-4 text-center text-sm text-slate-500">{t('settings.noChannels')}</p>
-          )}
-          {channels.map((channel) => (
-            <div key={channel.id} className="flex items-center gap-3 rounded-xl bg-ink-900/60 px-4 py-3 ring-1 ring-white/5">
-              <span className="chip bg-emerald-400/10 text-emerald-300 ring-emerald-400/30">
-                {channel.channel}
-              </span>
-              <span className="flex-1 text-sm text-slate-400">
-                {channel.channel === 'WEB' ? 'web' : channel.externalUserId} · {channel.language}
-              </span>
-              {channel.channel !== 'WEB' && (
-                <button
-                  className="rounded-full p-2 text-slate-500 transition hover:bg-rose-500/10 hover:text-rose-300"
-                  onClick={() => unlink(channel)}
-                  aria-label={t('settings.unlink')}
-                  title={t('settings.unlink')}
-                >
-                  <Unlink className="h-4 w-4" aria-hidden />
-                </button>
+                    {channel.channel !== 'WEB' && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold text-rose-400/80 transition hover:bg-rose-500/10 hover:text-rose-300 focus:outline-none"
+                        onClick={() => setUnlinkTarget(channel)}
+                      >
+                        <Unlink className="h-3.5 w-3.5" aria-hidden />
+                        <span className="hidden sm:inline">{t('settings.unlink')}</span>
+                      </button>
+                    )}
+                  </div>
+                ))
               )}
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Danger zone */}
-      <section className="card border-rose-400/20 p-5 ring-rose-400/20 sm:p-6">
-        <h2 className="flex items-center gap-2 text-sm font-bold text-rose-300">
-          <AlertTriangle className="h-4 w-4" aria-hidden />
-          {t('settings.danger')}
-        </h2>
-        <p className="mt-1 text-sm text-slate-400">{t('settings.deleteWarning')}</p>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="flex-1">
-            <label className="label" htmlFor="confirmDelete">{t('settings.confirmDelete')}</label>
-            <input
-              id="confirmDelete"
-              className="input"
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="DELETE"
-            />
           </div>
-          <button
-            className="btn-danger"
-            disabled={confirmText !== 'DELETE'}
-            onClick={deleteAccount}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden />
-            {t('settings.deleteAccount')}
-          </button>
-        </div>
-      </section>
+        </SettingsSection>
+
+        {/* Danger Zone Section */}
+        <SettingsSection title="Danger Zone" description="Irreversible actions. Deleting your account will immediately wipe all associated data and revoke API access.">
+          <div className="card overflow-hidden border-rose-500/20 bg-rose-500/[0.02]">
+            <div className="p-5 sm:p-6">
+              <div className="flex items-center gap-2 text-rose-400">
+                <AlertTriangle className="h-5 w-5" aria-hidden />
+                <h3 className="text-sm font-bold">{t('settings.danger')}</h3>
+              </div>
+              <p className="mt-2 text-sm text-slate-400 leading-relaxed">{t('settings.deleteWarning')}</p>
+              
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="flex-1">
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-300" htmlFor="confirmDelete">
+                    {t('settings.confirmDelete')}
+                  </label>
+                  <input
+                    id="confirmDelete"
+                    className="w-full rounded-xl bg-ink-900 px-3.5 py-2.5 font-mono text-sm text-slate-200 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-rose-500/50"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder="DELETE"
+                    autoComplete="off"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex h-[42px] shrink-0 items-center justify-center gap-2 rounded-xl bg-rose-500/10 px-5 text-sm font-semibold text-rose-400 ring-1 ring-inset ring-rose-500/20 transition hover:bg-rose-500 hover:text-white disabled:pointer-events-none disabled:opacity-50"
+                  disabled={confirmText !== 'DELETE'}
+                  onClick={deleteAccount}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  {t('settings.deleteAccount')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </SettingsSection>
+
+        {/* Unlink confirmation modal */}
+        {unlinkTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => !unlinking && setUnlinkTarget(null)}
+            />
+
+            {/* Dialog */}
+            <div className="relative w-full max-w-sm animate-in fade-in zoom-in-95 rounded-2xl border border-white/10 bg-ink-900 p-6 shadow-2xl">
+              <div className="flex items-start gap-4">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-rose-500/10 ring-1 ring-rose-400/30">
+                  <Unlink className="h-5 w-5 text-rose-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-bold text-slate-100">Unlink this chat?</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                    Slips sent from{' '}
+                    <span className="font-medium text-slate-300">
+                      {unlinkTarget.channel === 'TELEGRAM' ? 'Telegram' : 'LINE'}
+                    </span>
+                    {unlinkTarget.externalUserId ? (
+                      <>
+                        {' '}
+                        <span className="font-mono text-slate-300">
+                          …{unlinkTarget.externalUserId.slice(-4)}
+                        </span>
+                      </>
+                    ) : null}{' '}
+                    will no longer reach your account.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  disabled={unlinking}
+                  onClick={() => setUnlinkTarget(null)}
+                  className="flex-1 rounded-xl bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-300 ring-1 ring-white/10 transition hover:bg-white/10 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={unlinking}
+                  onClick={confirmUnlink}
+                  className="flex-1 rounded-xl bg-rose-500 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-rose-400 disabled:opacity-50"
+                >
+                  {unlinking ? 'Unlinking…' : 'Unlink'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
