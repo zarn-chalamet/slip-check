@@ -20,7 +20,26 @@
     "needAccount": "New to SlipCheck?",
     "haveAccount": "Already have an account?",
     "passwordHint": "At least 8 characters",
-    "failed": "Could not sign you in. Check your details."
+    "failed": "Could not sign you in. Check your details.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "footerLegal": "By continuing you accept the terms and privacy policy.",
+    "step": { 
+      "login": "Step 1 of 1", 
+      "register": "Step 1 of 2" 
+    },
+    "errors": {
+      "email": "Enter a valid email address.",
+      "passwordShort": "Password must be at least 8 characters.",
+      "displayName": "Shop name must be at least 2 characters."
+    },
+    "strength": {
+      "tooShort": "Too short",
+      "weak": "Weak",
+      "fair": "Fair",
+      "good": "Good",
+      "strong": "Strong"
+    }
   },
   "upload": {
     "title": "Check a slip",

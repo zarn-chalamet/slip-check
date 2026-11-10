@@ -57,3 +57,9 @@
     @apply block text-xs font-medium uppercase tracking-wider text-slate-400 mb-1.5;
   }
 }
+
+@layer utilities {
+  .shadow-glow {
+    box-shadow: 0 10px 40px -10px rgba(52, 211, 153, 0.45);
+  }
+}
