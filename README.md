@@ -2,7 +2,7 @@
 
 # 🧾 SlipCheck
 
-### Payment Slip Verification for Thai Online Sellers
+### Payment Slip Verification SaaS for Thai Online Sellers
 
 Automated bank transfer slip verification via **Web Dashboard**, **Telegram Bot**, and **LINE Bot**,
 with native multi-language support in **English**, **ไทย**, and **မြန်မာ**.
@@ -15,33 +15,87 @@ with native multi-language support in **English**, **ไทย**, and **မြ�
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
-[Overview](#-project-overview--problem-statement) •
-[Architecture](#-system-architecture) •
-[Providers](#-provider-integration-easyslip-v2--smart-mock-fallback) •
-[ADRs](#-architecture-decision-records-adr-summary) •
-[Quick Start](#-quick-start) •
-[API](#-api--bot-command-reference) •
-[Testing](#-testing)
+[Overview](#overview) •
+[Showcase](#showcase) •
+[Features](#features) •
+[Architecture](#architecture) •
+[ADRs](#adrs) •
+[Quick Start](#quick-start)
 
 </div>
 
 ---
 
+<a id="overview"></a>
 ## 📌 Project Overview & Problem Statement
 
-Online sellers in Thailand process dozens to hundreds of bank transfer slips daily via **PromptPay** and Thai bank mobile apps (KPlus, SCB, BBL, etc.). Common pain points (**P1–P10**) include:
+Online sellers in Thailand process dozens to hundreds of bank transfer slips daily via **PromptPay** and Thai bank mobile apps. Common pain points include:
 
-| Pain Point | Description |
-|------------|-------------|
-| 🎭 **Fake Slips** | Photographed or photoshopped slips that look authentic. |
-| ♻️ **Reused Slips** | Customers using the same real slip to claim multiple orders across different channels. |
-| 🏦 **Wrong Account Transfers** | Real slips paid to a different seller or personal account. |
-| 🌏 **Multi-language Staff** | Burmese staff struggling to parse Thai bank app receipts or communicate status. |
-
-**SlipCheck** addresses these by providing instant, channel-agnostic verification backed by real-time interbank verification, database-enforced duplicate protection, and strict PDPA privacy standards.
+| Pain Point | How SlipCheck Solves It |
+|------------|-------------------------|
+| 🎭 **Fake Slips** | Connects to interbank networks (via EasySlip API v2) to verify transaction existence and amounts in real time. |
+| ♻️ **Reused Slips** | Atomic database locks enforce a strict 1-slip-per-seller rule, instantly flagging duplicates. |
+| 🏦 **Wrong Accounts** | Validates the receiver's account number against the seller's registered, AES-encrypted bank accounts. |
+| 🌏 **Language Barriers** | Provides dynamic dashboard and bot responses in English, Thai, and Burmese so non-Thai staff can process orders seamlessly. |
 
 ---
 
+<a id="showcase"></a>
+## 📸 Platform Showcase
+
+### Web Dashboard
+*A premium SaaS React frontend with split-pane layouts, glassmorphism UI, and custom headless components.*
+
+| **Slip Check (Verification)** | **Transaction History** |
+|:---:|:---:|
+| ![Slip Check Page](./docs/screenshots/slip-check.png) | ![History Page](./docs/screenshots/history.png) |
+| *Drag-and-drop instant verification with granular verdicts.* | *Compact date filtering and pagination for daily reconciliations.* |
+
+| **Bank Accounts** | **Settings & 1-Click Linking** |
+|:---:|:---:|
+| ![Accounts Page](./docs/screenshots/accounts.png) | ![Settings Page](./docs/screenshots/settings.png) |
+| *AES-256-GCM encrypted bank account management.* | *Live UI polling with QR deep links for instant bot connection.* |
+
+### Multi-Channel Bot Integrations
+*Sellers verify slips on the go without leaving their favorite chat apps.*
+
+<table>
+  <tr>
+    <th align="center">Telegram Bot</th>
+    <th align="center">LINE Official Account</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="./docs/screenshots/telegram-bot.jpg" alt="Telegram Bot" width="220">
+    </td>
+    <td align="center">
+      <img src="./docs/screenshots/line-bot.jpg" alt="LINE Bot" width="220">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><i>Rich multi-line replies, inline keyboards, and deep linking.</i></td>
+    <td align="center"><i>Push notifications, quick replies, and OA messaging.</i></td>
+  </tr>
+</table>
+
+---
+
+<a id="features"></a>
+## ✨ Key Features
+
+- **📲 1-Click QR Chat Linking**: Seamlessly connect Telegram and LINE accounts using camera QR scanning or universal deep links (`/start <code>`). The React UI uses live polling to auto-update the dashboard the moment a phone scans the code.
+- **🧠 Smart Language Synchronization**: When a user links their bot, the backend detects their web-dashboard language preference (English, Thai, Burmese) and immediately greets them in their native language.
+- **🧾 Instant Slip Verification**: Sub-2-second verification powered by EasySlip API v2, with local EMVCo payload parsing fallbacks.
+- **🔔 Proactive Push Notifications**: Rich, multi-line slip summaries (Amount, Bank, Receiver, Ref) and instant push alerts across all channels if a shop unlinks a chat.
+- **🛡️ Enterprise-Grade Security**:
+  - **Zero Disk Storage**: Slip images are processed strictly in memory (`byte[]`) and never stored on disk or in the DB.
+  - **AES-256-GCM**: Bank account numbers are encrypted at rest.
+  - **Exact Financial Math**: Zero floating-point drift. All money is calculated in integer **Satang** (`bigint`).
+  - **Constant-time HMAC Verification**: LINE and Telegram webhook request verification.
+
+---
+
+<a id="architecture"></a>
 ## 🏗️ System Architecture
 
 ```text
@@ -80,34 +134,28 @@ Online sellers in Thailand process dozens to hundreds of bank transfer slips dai
 SlipCheck supports both a live production banking provider and a local developer mock.
 
 ### 1. Production Provider: EasySlip API v2
-
-We integrated the EasySlip v2 API (`https://api.easyslip.com/v2/verify/bank`) as the primary real-world verification service because it provides:
-
-- **18+ Thai Bank Support:** Verification across all major Thai banks (KBANK, SCB, BBL, KTB, BAY, TTB, GSB, etc.).
-- **Standardized JSON Envelope:** Clean `success`, `data`, and `error` structures.
+Integrated the EasySlip v2 API as the primary verification service:
+- **18+ Thai Bank Support:** Verification across all major Thai banks.
 - **Account & Amount Matching:** Native capabilities to validate receiver account numbers and expected transfer amounts.
-- **Multi-Branch Support:** Per-branch API key isolation and quota tracking.
 
 ### 2. Development Provider: Smart MockProvider
-
-To ensure zero-cost testing and automated CI execution without consuming paid API credits, the system includes `MockProvider` (`provider.name=mock`):
-
-- **Deterministic Magic Payloads:** Triggers specific responses via prefixes (e.g., `MOCK_OK_200_1234`, `MOCK_NOT_FOUND`, `MOCK_PENDING`, `MOCK_QUOTA`, `MOCK_DOWN`).
-- **Free Local QR Scanner Fallback:** Automatically detects real Thai EMVCo QR payloads (starting with `000201`). It verifies the QR structure locally without internet or API keys, enabling end-to-end UI testing for free.
+Ensures zero-cost testing and automated CI execution without consuming paid API credits (`provider.name=mock`):
+- **Deterministic Magic Payloads:** Triggers specific responses via prefixes (e.g., `MOCK_OK_200_1234`, `MOCK_NOT_FOUND`, `MOCK_PENDING`).
+- **Free Local QR Scanner Fallback:** Automatically detects real Thai EMVCo QR payloads and verifies the QR structure locally without internet or API keys, enabling end-to-end UI testing for free.
 
 ---
 
+<a id="adrs"></a>
 ## 🏛️ Architecture Decision Records (ADR Summary)
 
 | ADR | Decision | Summary |
 |-----|----------|---------|
-| **ADR-1** | Persistence-Backed Retries over In-Memory Circuit Breakers | Transient provider failures (`PENDING`, `UNAVAILABLE`) set `status=RETRY_SCHEDULED`. `RetryJob` re-executes retries on a configurable schedule (`[1, 3, 10]` minutes). This guarantees retries survive application restarts. |
-| **ADR-2** | Zero QR Payload Persistence | To strictly enforce seller privacy and PDPA compliance, QR payloads are processed in-memory and never saved to the database or log files. Pending QR payloads live in-memory only (`PendingPayloadCache`, 30-min TTL). |
-| **ADR-3** | Flyway Schema Ownership (`ddl-auto: none`) | PostgreSQL Flyway migrations (`V1__init.sql`) serve as the single source of truth for the database schema. Hibernate's automatic DDL generation is disabled. |
-| **ADR-4** | Database-Level Duplicate Protection | Duplicate prevention is enforced via a SQL `UNIQUE` constraint on `claimed_transactions(seller_id, sending_bank, trans_ref)`. Slips are claimed directly in an atomic transaction, eliminating race conditions under high concurrency. |
-| **ADR-5** | Encrypted Receiver Account Numbers | Registered bank account numbers are encrypted at rest using AES-256-GCM (`CryptoService`). The API layer only ever exposes the last 4 digits (`accountLast4`). |
-| **ADR-6** | Channel Notification & Adapter Strategy | Web sync requests return within the HTTP lifecycle. Chat webhooks (Telegram/LINE) acknowledge receipt immediately and process asynchronously. Pushes use `NotificationRouter` based on active seller channel identities. |
-| **ADR-7** | Native Multi-Language i18n | Every user-facing message is driven by `messages_{en,th,my}.properties`. Burmese and Thai translations are natively authored strings, preserving localized domain terms. |
+| **ADR&#8209;1** | Persistence-Backed Retries | Transient provider failures (`PENDING`, `UNAVAILABLE`) set `status=RETRY_SCHEDULED`. `RetryJob` re-executes retries on a configurable schedule, guaranteeing retries survive application restarts. |
+| **ADR&#8209;2** | Zero QR Payload Persistence | To strictly enforce seller privacy and PDPA compliance, QR payloads are processed in memory and never saved to the database or log files. |
+| **ADR&#8209;3** | Flyway Schema Ownership | PostgreSQL Flyway migrations (`V1__init.sql`) serve as the single source of truth. Hibernate's automatic DDL generation is disabled. |
+| **ADR&#8209;4** | DB-Level Duplicate Protection | Duplicate prevention is enforced via a SQL `UNIQUE` constraint on `claimed_transactions`. Slips are claimed directly in an atomic transaction, eliminating race conditions. |
+| **ADR&#8209;5** | Encrypted Accounts | Bank account numbers are encrypted at rest using AES-256-GCM. The API layer only exposes the last 4 digits. |
+| **ADR&#8209;6** | Native Multi-Language i18n | User-facing messages are driven by `messages_{en,th,my}.properties`. Burmese and Thai translations are natively authored strings containing rich multi-line UI formatting via `\n`. |
 
 ---
 
@@ -117,24 +165,18 @@ To ensure zero-cost testing and automated CI execution without consuming paid AP
 |-------|------------|
 | **Backend** | Java 21, Spring Boot 3.4.x, Spring Security, Spring Data JPA |
 | **Database** | PostgreSQL 17, Flyway Migration |
-| **Authentication** | JWT (HMAC-SHA256 via jjwt 0.12.x), Password Hashing (BCrypt) |
+| **Authentication** | JWT (HMAC-SHA256 via jjwt 0.12.x), BCrypt password hashing |
 | **Encryption & Security** | AES-256-GCM (`javax.crypto`), Rate Limiting (Bucket4j) |
-| **QR Processing** | ZXing 3.5.x (with multi-strategy fallback: rotation, grayscale, thresholding) |
-| **Frontend** | React 19, Vite, TypeScript, Tailwind CSS, i18next |
-| **Integrations** | EasySlip v2 API, Telegram Long Polling / Webhook, LINE Messaging API |
+| **Frontend** | React 19, Vite, TypeScript, Tailwind CSS, Headless UI, i18next |
+| **Integrations** | EasySlip v2 API, Telegram Webhooks, LINE Messaging API |
 | **Containerization** | Docker, Multi-stage Dockerfile (Eclipse Temurin 21 JRE) |
 
 ---
 
+<a id="quick-start"></a>
 ## 🚀 Quick Start
 
-### 1. Prerequisites
-
-- Java 21+
-- Node.js 22+
-- PostgreSQL 17 (or Docker)
-
-### 2. Environment Setup
+### 1. Environment Setup
 
 Create a `.env` file in the root directory:
 
@@ -159,20 +201,16 @@ LINE_CHANNEL_SECRET=
 LINE_CHANNEL_ACCESS_TOKEN=
 ```
 
-### 3. Running with Docker Compose
+### 2. Running with Docker Compose
 
 ```bash
 # Build and run all services (DB, Backend, Frontend)
 docker compose up --build -d
 ```
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:8080 |
-| Health Check | http://localhost:8080/actuator/health |
+Access the web app at `http://localhost:3000`.
 
-### 4. Local Development Execution
+### 3. Local Development
 
 **Backend:**
 
@@ -188,63 +226,6 @@ cd frontend
 npm install
 npm run dev
 ```
-
----
-
-## 📋 API & Bot Command Reference
-
-### REST API Endpoints
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/api/v1/auth/register` | Public | Register a seller account |
-| `POST` | `/api/v1/auth/login` | Public | Login and obtain JWT token |
-| `GET` | `/api/v1/seller/accounts` | JWT | List registered bank accounts (masked last 4) |
-| `POST` | `/api/v1/seller/accounts` | JWT | Add a new receiving bank account |
-| `POST` | `/api/v1/slips` | JWT | Upload a slip image for instant verification |
-| `GET` | `/api/v1/slips` | JWT | Fetch submission history (paginated & filtered) |
-| `GET` | `/api/v1/slips/review` | JWT | View review queue (`AMOUNT_MISMATCH`, etc.) |
-| `POST` | `/api/v1/slips/{id}/review` | JWT | Approve or Reject flagged submissions |
-| `GET` | `/api/v1/summary/daily` | JWT | Get seller's daily verification stats |
-
-### Bot Commands (Telegram & LINE)
-
-| Command | Description |
-|---------|-------------|
-| `/start` | Welcome message and channel link prompt |
-| `/link <code>` | Link chat account using web-generated pairing code |
-| `/lang` | Toggle preference between English, ไทย, and မြန်မာ |
-| `/summary` | Request instant daily summary report |
-| `/help` | View help guide and caption instructions |
-
----
-
-## 🧪 Testing
-
-```bash
-cd backend
-
-# Run all unit and integration tests
-mvn test
-
-# Run high-concurrency duplicate claim test (20 threads -> 1 VERIFIED + 19 DUPLICATE)
-mvn test -Dtest="ConcurrencyTest"
-
-# Verify complete i18n bundle key synchronization across EN, TH, MY
-mvn test -Dtest="I18nCompletenessTest"
-```
-
----
-
-## 👥 Market Research & Seller Interviews
-
-**Target Audience Validation** (Small Online Sellers in Thailand):
-
-- **Interview Goal:** Understand manual check bottleneck and frequency of fraud.
-- **Key Findings:**
-  - Sellers manually match receiver names/suffixes across banking apps (takes 30–60 secs per slip).
-  - Fake/edited slips and reused historical slips account for ~90% of fraud attempts.
-  - Burmese staff management requires clear visual cues and native language status labels rather than complex banking terms.
 
 ---
 
