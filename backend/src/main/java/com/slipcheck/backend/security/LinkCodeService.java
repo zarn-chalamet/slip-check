@@ -89,6 +89,7 @@ public class LinkCodeService {
                 .orElseGet(() -> new ChannelIdentityEntity(
                         seller.getId(), channel.name(), externalUserId, seller.getLanguage()));
         identity.setSellerId(seller.getId());
+        identity.setLanguage(seller.getLanguage());
         identity.setLinkedAt(Instant.now());
         identities.save(identity);
 

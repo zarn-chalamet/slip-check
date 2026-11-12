@@ -11,6 +11,7 @@ import com.slipcheck.backend.core.service.SummaryService.DailySummary;
 import com.slipcheck.backend.i18n.MessageFormatter;
 import com.slipcheck.backend.i18n.MessageKeys;
 import com.slipcheck.backend.persistence.entity.ChannelIdentityEntity;
+import com.slipcheck.backend.persistence.entity.SellerEntity;
 import com.slipcheck.backend.persistence.repo.ChannelIdentityRepository;
 import com.slipcheck.backend.persistence.repo.SellerRepository;
 import com.slipcheck.backend.security.LinkCodeService;
@@ -109,7 +110,9 @@ public class LineBotService {
 
     private void handleCommand(String replyToken, String userId, String text) {
         String lower = text.toLowerCase();
-        if (lower.startsWith("/link")) {
+        if (lower.startsWith("/start")) {
+            client.replyText(replyToken, formatter.format(MessageKeys.CHAT_WELCOME, languageOf(userId)));
+        } else if (lower.startsWith("/link")) {
             String[] parts = text.split("\\s+");
             String code = parts.length > 1 ? parts[1] : "";
             Optional<ChannelIdentityEntity> linked = linkCodes.redeem(Channel.LINE, userId, code);
@@ -117,10 +120,13 @@ public class LineBotService {
                 client.replyText(replyToken,
                         formatter.format(MessageKeys.CHAT_LINK_FAILED, languageOf(userId)));
             } else {
-                String name = sellers.findById(linked.get().getSellerId())
-                        .map(s -> s.getDisplayName()).orElse("your account");
+                ChannelIdentityEntity identity = linked.get();
+                String name = sellers.findById(identity.getSellerId())
+                        .map(SellerEntity::getDisplayName).orElse("your account");
+                
+                // Sends response in the seller's website language
                 client.replyText(replyToken,
-                        formatter.format(MessageKeys.CHAT_LINKED, linked.get().getLanguage(), name));
+                        formatter.format(MessageKeys.CHAT_LINKED, identity.getLanguage(), name));
             }
         } else if (lower.startsWith("/lang")) {
             String[] parts = text.split("\\s+");

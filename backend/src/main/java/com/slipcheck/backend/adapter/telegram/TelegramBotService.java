@@ -144,8 +144,16 @@ public class TelegramBotService {
     private void handleCommand(long chatId, String text) {
         String chatIdStr = String.valueOf(chatId);
         String lower = text.toLowerCase();
+        
         if (lower.startsWith("/start")) {
-            client.sendLanguageKeyboard(chatId, formatter.format(MessageKeys.CHAT_LANGUAGE_PROMPT, languageOf(chatIdStr)));
+            String[] parts = text.split("\\s+");
+            if (parts.length > 1 && !parts[1].isBlank()) {
+                // User scanned QR code or clicked deep-link: t.me/Bot?start=CODE
+                link(chatId, parts[1].trim());
+            } else {
+                // Standard /start -> send welcome message
+                client.sendMessage(chatId, formatter.format(MessageKeys.CHAT_WELCOME, languageOf(chatIdStr)));
+            }
         } else if (lower.startsWith("/link")) {
             String[] parts = text.split("\\s+");
             String code = parts.length > 1 ? parts[1] : "";
@@ -174,6 +182,8 @@ public class TelegramBotService {
         ChannelIdentityEntity identity = linked.get();
         String name = sellers.findById(identity.getSellerId())
                 .map(s -> s.getDisplayName()).orElse("your account");
+        
+        // Identity language now matches seller's website language!
         client.sendMessage(chatId, formatter.format(MessageKeys.CHAT_LINKED, identity.getLanguage(), name));
     }
 

@@ -21,6 +21,7 @@ public final class MessageKeys {
     public static final String SLIP_QUOTA_EXCEEDED = "slip.quota_exceeded";
     public static final String SLIP_INVALID_IMAGE = "slip.invalid_image";
 
+    public static final String CHAT_WELCOME = "chat.welcome";
     public static final String CHAT_NOT_LINKED = "chat.not_linked";
     public static final String CHAT_LINKED = "chat.linked";
     public static final String CHAT_UNLINKED = "chat.unlinked";
