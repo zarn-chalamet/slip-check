@@ -42,25 +42,29 @@ public class MessageFormatter {
         }
     }
 
-    /** Format the reply text for a slip result. */
+        /** Format the reply text for a slip result. */
     public String forResult(SlipResult result, String language, ZoneId sellerZone) {
         ZoneId zone = sellerZone != null ? sellerZone : FALLBACK_ZONE;
-        ResultCode code = result.code();
-        return switch (code) {
+        
+        var slip = result.slip();
+        String amt = slip != null && slip.amountBaht() != null ? amount(slip.amountBaht()) : "-";
+        String when = slip != null ? dateTime(slip.transferredAt(), zone) : "-";
+        String bank = slip != null && slip.sendingBank() != null ? slip.sendingBank() : "-";
+        String ref = slip != null && slip.transRef() != null ? slip.transRef() : "-";
+        String receiver = slip != null && slip.receiverNameMasked() != null ? slip.receiverNameMasked() : "-";
+        
+        String expected = amount(result.expectedAmountBaht());
+        String firstUsed = dateTime(result.firstUsedAt(), zone);
+
+        return switch (result.code()) {
             case VERIFIED -> format(MessageKeys.SLIP_VERIFIED, language,
-                    amount(result.slip().amountBaht()),
-                    dateTime(result.slip().transferredAt(), zone),
-                    result.slip().sendingBank());
+                    amt, when, bank, ref, receiver);
             case AMOUNT_MISMATCH -> format(MessageKeys.SLIP_AMOUNT_MISMATCH, language,
-                    amount(result.slip().amountBaht()),
-                    dateTime(result.slip().transferredAt(), zone),
-                    result.slip().sendingBank(),
-                    amount(result.expectedAmountBaht()));
+                    amt, when, bank, expected);
             case RECEIVER_UNCERTAIN -> format(MessageKeys.SLIP_RECEIVER_UNCERTAIN, language,
-                    amount(result.slip().amountBaht()),
-                    dateTime(result.slip().transferredAt(), zone));
+                    amt, when);
             case DUPLICATE_SLIP -> format(MessageKeys.SLIP_DUPLICATE, language,
-                    "", dateTime(result.firstUsedAt(), zone));
+                    ref, firstUsed);
             case WRONG_RECEIVER -> format(MessageKeys.SLIP_WRONG_RECEIVER, language);
             case UNREADABLE_QR -> format(MessageKeys.SLIP_UNREADABLE_QR, language);
             case SLIP_NOT_FOUND -> format(MessageKeys.SLIP_NOT_FOUND, language);
@@ -71,7 +75,7 @@ public class MessageFormatter {
             case NOT_LINKED -> format(MessageKeys.CHAT_NOT_LINKED, language);
         };
     }
-
+    
     /** Format the daily summary message (summary.daily). */
     public String dailySummary(String date, long verified, BigDecimal totalBaht, long review,
                                long duplicates, long rejected, String language) {

@@ -60,11 +60,15 @@ public class LineClient implements ChannelNotifier {
         return Channel.LINE;
     }
 
-    /** Push (follow-ups / summaries). No-op unless line.push-enabled=true. */
     @Override
     public void send(String externalUserId, String text) {
-        if (!pushEnabled || !isConfigured()) {
-            return; // default: stay inside the free tier, replies only
+        if (!isConfigured()) {
+            log.warn("LINE client is not configured with a valid channel access token");
+            return;
+        }
+        if (!pushEnabled) {
+            log.warn("LINE push message skipped for user {} because line.push-enabled is false", externalUserId);
+            return;
         }
         post("/push", Map.of("to", externalUserId, "messages", List.of(textMessage(text))));
     }

@@ -55,7 +55,7 @@ telegram:
 line:
   channel-secret: ${LINE_CHANNEL_SECRET:}
   channel-access-token: ${LINE_CHANNEL_ACCESS_TOKEN:}
-  push-enabled: ${LINE_PUSH_ENABLED:false}
+  push-enabled: ${LINE_PUSH_ENABLED:true}
 
 provider:
   name: ${PROVIDER_NAME:easyslip}        # change to 'mock' if you run out of API credits

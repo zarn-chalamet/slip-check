@@ -23,6 +23,7 @@ public final class MessageKeys {
 
     public static final String CHAT_NOT_LINKED = "chat.not_linked";
     public static final String CHAT_LINKED = "chat.linked";
+    public static final String CHAT_UNLINKED = "chat.unlinked";
     public static final String CHAT_LINK_FAILED = "chat.link_failed";
     public static final String CHAT_LANGUAGE_PROMPT = "chat.language_prompt";
     public static final String CHAT_LANGUAGE_SET = "chat.language_set";

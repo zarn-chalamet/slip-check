@@ -12,6 +12,9 @@ import com.slipcheck.backend.adapter.web.exception.UnsupportedChannelException;
 import com.slipcheck.backend.audit.AuditService;
 import com.slipcheck.backend.audit.AuditService.ActorType;
 import com.slipcheck.backend.core.model.Channel;
+import com.slipcheck.backend.core.service.NotificationRouter;
+import com.slipcheck.backend.i18n.MessageFormatter;
+import com.slipcheck.backend.i18n.MessageKeys;
 import com.slipcheck.backend.persistence.entity.ChannelIdentityEntity;
 import com.slipcheck.backend.persistence.entity.SellerEntity;
 import com.slipcheck.backend.persistence.repo.AuditEventRepository;
@@ -34,6 +37,8 @@ public class SellerService {
     private final AuditEventRepository auditEvents;
     private final LinkCodeService linkCodes;
     private final AuditService audit;
+    private final NotificationRouter notifications;
+    private final MessageFormatter formatter;
 
     @Transactional(readOnly = true)
     public SellerEntity getSeller(UUID sellerId) {
@@ -92,6 +97,16 @@ public class SellerService {
         if (Channel.WEB.name().equals(identity.getChannel())) {
             throw new CannotUnlinkWebChannelException();
         }
+
+        // 1. Format and send "Unlinked" message via Telegram/LINE BEFORE deleting
+        Channel channel = Channel.valueOf(identity.getChannel());
+        String shopName = sellers.findById(sellerId)
+                .map(SellerEntity::getDisplayName)
+                .orElse("your account");
+        String text = formatter.format(MessageKeys.CHAT_UNLINKED, identity.getLanguage(), shopName);
+        notifications.sendText(channel, identity.getExternalUserId(), text);
+
+        // 2. Delete from database
         identities.delete(identity);
         audit.record(sellerId, ActorType.SELLER, sellerId.toString(), "CHAT_UNLINKED",
                 "channel_identity", identityId.toString(), Map.of("channel", identity.getChannel()));
